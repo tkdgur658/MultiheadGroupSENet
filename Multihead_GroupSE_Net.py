@@ -2,42 +2,6 @@ import torch
 import torch.nn as nn
 import math
 
-class Flatten_Block(nn.Module):
-    def __init__(
-        self,
-        num_input_features: int,
-        num_layers: int
-    ) -> None:
-        super(Flatten_Block, self).__init__()
-        self.layers = nn.ModuleList()
-        for i in range(num_layers):
-        
-            self.layers.append(nn.Sequential(nn.BatchNorm2d(num_input_features//2), 
-                         nn.ReLU(inplace=True),
-                             nn.Conv2d(num_input_features//2, 
-                                           num_input_features//2 * 32, kernel_size=3, stride=1,
-                                           bias=False, groups=num_input_features//2),
-                          nn.BatchNorm2d(32 * num_input_features//2),
-                          nn.ReLU(inplace=True),
-                          nn.Conv2d(32 * num_input_features//2, num_input_features//2,
-                                           kernel_size=1, stride=1, padding=1,
-                                           bias=False)
-                         )
-                         )
-        
-        self.partial_length = num_input_features//2
-    def forward(self, input):  
-        left = input[:,:self.partial_length]
-        right = input[:,self.partial_length:]
-        for i, layer in enumerate(self.layers):
-            
-            if i==0:
-                new_features = layer(right)
-            else:
-                new_features = layer(new_features)
-        new_features = torch.cat([left,right,new_features],1)
-        return new_features
-
 class Conv_Block(nn.Sequential):
     def __init__(self, num_input_features: int, num_output_features: int, pool=True) -> None:
         super(Conv_Block, self).__init__()
@@ -51,7 +15,6 @@ class Conv_Block(nn.Sequential):
         self.add_module('relu', nn.ReLU(inplace=True))
         if pool == True:
             self.add_module('pool', nn.AvgPool2d(kernel_size=2, stride=2))
-
 
 def Conv1(in_channels, out_channels):
     return nn.Sequential(
@@ -84,6 +47,7 @@ class Group_Conv_SELayer(nn.Module):
         y = y.view(batch_size, -1, 1, 1)
         y_repeat = y.repeat_interleave(self.size_for_group,1)
         return x * y_repeat.expand_as(x), y
+        
 class Multihead_GroupSE_Net(nn.Module):
     def __init__(self, in_channels=78, num_classes=1, num_init_features=8, blocks = [1,1,1,1], expansion=8):
         super(Multihead_GroupSE_Net,self).__init__()
